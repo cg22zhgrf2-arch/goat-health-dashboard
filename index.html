@@ -1,0 +1,1474 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Goat Health Dashboard</title>
+    <meta name="theme-color" content="#2f6f52" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Goat Health" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="assets/app-icon-source.png" />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17201d;
+        --muted: #65736d;
+        --paper: #f7f4ed;
+        --panel: #fffefa;
+        --line: #ddd8cb;
+        --green: #2f6f52;
+        --mint: #d7eadb;
+        --blue: #315f83;
+        --amber: #d89632;
+        --coral: #cf6f5f;
+        --charcoal: #26302c;
+        --shadow: 0 18px 55px rgba(35, 43, 38, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        background: var(--paper);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      select,
+      textarea,
+      input[type="date"] {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 11px;
+        color: var(--ink);
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 248px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        padding: 28px 22px;
+        border-right: 1px solid var(--line);
+        background: #fcfbf6;
+      }
+
+      .brand,
+      .goat-name,
+      .panel-heading,
+      .card-top,
+      .warning-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 46px;
+        height: 46px;
+        place-items: center;
+        border-radius: 8px;
+        color: #fff;
+        background: var(--green);
+        font-weight: 900;
+      }
+
+      .brand strong,
+      .goat-name strong {
+        display: block;
+        font-size: 1.02rem;
+      }
+
+      .brand span,
+      .goat-name span,
+      .date,
+      .trend,
+      .muted {
+        color: var(--muted);
+      }
+
+      .brand span,
+      .goat-name span {
+        font-size: 0.82rem;
+      }
+
+      .nav {
+        display: grid;
+        gap: 7px;
+      }
+
+      .nav button {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        color: var(--muted);
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .nav button[aria-current="page"] {
+        color: #fff;
+        background: var(--ink);
+      }
+
+      .icon {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+      }
+
+      .sidebar-card,
+      .health-panel,
+      .card,
+      .table-panel,
+      .care-panel,
+      .warning-panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .sidebar-card {
+        margin-top: auto;
+        padding: 16px;
+      }
+
+      .sidebar-card h2,
+      .control-card h2,
+      .warning-panel h2 {
+        margin: 0 0 12px;
+        font-size: 0.95rem;
+      }
+
+      .supply-list,
+      .checklist,
+      .feed-list,
+      .profile-list,
+      .warning-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .log-form {
+        display: grid;
+        gap: 12px;
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .supply-item,
+      .feed-item,
+      .profile-list div {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .supply-item strong,
+      .feed-item strong,
+      .profile-list strong {
+        color: var(--ink);
+      }
+
+      .main {
+        min-width: 0;
+        padding: 28px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.9rem, 3vw, 3.4rem);
+        line-height: 0.96;
+      }
+
+      .date {
+        margin-top: 8px;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .icon-button {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        background: var(--panel);
+        cursor: pointer;
+      }
+
+      .text-button {
+        min-height: 39px;
+        border: 1px solid var(--green);
+        border-radius: 8px;
+        padding: 9px 12px;
+        color: #fff;
+        background: var(--green);
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .text-button.secondary {
+        color: var(--green);
+        background: #fff;
+      }
+
+      .segmented {
+        display: inline-grid;
+        grid-template-columns: repeat(3, minmax(70px, 1fr));
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .segmented button {
+        min-height: 34px;
+        border: 0;
+        border-radius: 6px;
+        color: var(--muted);
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .segmented button.active {
+        color: #fff;
+        background: var(--green);
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.22fr) minmax(300px, 0.78fr);
+        gap: 18px;
+        align-items: stretch;
+      }
+
+      .hero {
+        position: relative;
+        min-height: 352px;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #243027;
+        box-shadow: var(--shadow);
+      }
+
+      .hero img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .hero::after {
+        position: absolute;
+        inset: 0;
+        content: "";
+        background:
+          linear-gradient(90deg, rgba(15, 24, 18, 0.86), rgba(15, 24, 18, 0.18) 62%),
+          linear-gradient(0deg, rgba(15, 24, 18, 0.46), transparent 44%);
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        max-width: 560px;
+        min-height: 352px;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 28px;
+        color: #fff;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: #dfeee5;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .hero h2 {
+        margin: 0;
+        font-size: clamp(1.8rem, 3vw, 3.5rem);
+        line-height: 0.98;
+      }
+
+      .hero p {
+        max-width: 42rem;
+        margin: 14px 0 0;
+        color: #eef6f1;
+        line-height: 1.55;
+      }
+
+      .health-panel {
+        display: grid;
+        align-content: start;
+        gap: 16px;
+        min-height: 352px;
+        padding: 20px;
+      }
+
+      .panel-heading {
+        justify-content: space-between;
+      }
+
+      .panel-heading h2,
+      .table-panel h2,
+      .care-panel h2 {
+        margin: 0;
+        font-size: 1.02rem;
+      }
+
+      .status-pill {
+        border-radius: 999px;
+        padding: 6px 10px;
+        color: #12412c;
+        background: var(--mint);
+        font-size: 0.76rem;
+        font-weight: 900;
+      }
+
+      .goat-profiles {
+        display: grid;
+        gap: 12px;
+      }
+
+      .goat-card {
+        border: 1px solid #ebe4d6;
+        border-radius: 8px;
+        padding: 14px;
+        background: #fffdf7;
+      }
+
+      .avatar {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 8px;
+        border: 1px solid #d7d1c5;
+        font-weight: 900;
+      }
+
+      .avatar.white {
+        color: var(--ink);
+        background: #f6f2e9;
+      }
+
+      .avatar.black {
+        color: #fff;
+        background: var(--charcoal);
+      }
+
+      .profile-list {
+        margin-top: 12px;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin: 18px 0;
+      }
+
+      .card {
+        min-height: 132px;
+        padding: 18px;
+      }
+
+      .card-top {
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 800;
+      }
+
+      .badge {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        border-radius: 8px;
+        color: #fff;
+      }
+
+      .green {
+        background: var(--green);
+      }
+
+      .blue {
+        background: var(--blue);
+      }
+
+      .amber {
+        background: var(--amber);
+      }
+
+      .coral {
+        background: var(--coral);
+      }
+
+      .metric {
+        margin: 18px 0 4px;
+        font-size: clamp(1.8rem, 2.4vw, 2.55rem);
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .trend {
+        font-size: 0.84rem;
+      }
+
+      .dashboard-lower,
+      .care-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.58fr);
+        gap: 18px;
+      }
+
+      .care-grid {
+        margin-top: 18px;
+      }
+
+      .table-panel,
+      .care-panel,
+      .warning-panel {
+        overflow: hidden;
+      }
+
+      .table-head,
+      .goat-row,
+      .maintenance-row,
+      .vaccine-row,
+      .log-row,
+      .history-row {
+        display: grid;
+        gap: 12px;
+        align-items: center;
+        padding: 15px 18px;
+      }
+
+      .table-head,
+      .goat-row {
+        grid-template-columns: 1.2fr 0.8fr 0.8fr 0.85fr;
+      }
+
+      .maintenance-row {
+        grid-template-columns: 0.8fr 1.5fr 0.8fr;
+      }
+
+      .vaccine-row {
+        grid-template-columns: 0.75fr 1fr 1fr;
+      }
+
+      .log-row {
+        grid-template-columns: 0.7fr 0.75fr 0.75fr 1.5fr;
+      }
+
+      .history-row {
+        grid-template-columns: 0.85fr 1.9fr;
+      }
+
+      .table-head {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .goat-row + .goat-row,
+      .maintenance-row + .maintenance-row,
+      .vaccine-row + .vaccine-row,
+      .log-row + .log-row,
+      .history-row + .history-row {
+        border-top: 1px solid #eee8db;
+      }
+
+      .goat-row span,
+      .table-head span,
+      .maintenance-row span,
+      .vaccine-row span,
+      .log-row span,
+      .history-row span {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      .chip {
+        justify-self: start;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        font-weight: 900;
+      }
+
+      .chip.good {
+        color: #164a34;
+        background: var(--mint);
+      }
+
+      .chip.watch {
+        color: #7c3124;
+        background: #f2c7bb;
+      }
+
+      .control-panel {
+        display: grid;
+        gap: 14px;
+      }
+
+      .control-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+        background: var(--panel);
+      }
+
+      .check {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .check input {
+        width: 18px;
+        height: 18px;
+        margin-top: 1px;
+        accent-color: var(--green);
+      }
+
+      .range-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: center;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--blue);
+      }
+
+      .water-value {
+        min-width: 62px;
+        text-align: right;
+        font-weight: 900;
+      }
+
+      .warning-panel {
+        margin-top: 18px;
+        padding: 18px;
+      }
+
+      .log-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .form-pad {
+        padding: 18px;
+      }
+
+      .empty-state {
+        padding: 18px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .backup-copy {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+
+      .backup-status {
+        min-height: 20px;
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      .warning-title {
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .warning-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .warning-list span {
+        border-radius: 8px;
+        padding: 10px;
+        color: #6d281d;
+        background: #f8d8d1;
+        font-size: 0.86rem;
+        font-weight: 800;
+      }
+
+      .note {
+        margin: 14px 0 0;
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 1100px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 16px;
+          padding: 16px;
+        }
+
+        .nav {
+          grid-auto-flow: column;
+          overflow-x: auto;
+          align-items: center;
+          justify-content: start;
+        }
+
+        .sidebar-card {
+          display: none;
+        }
+
+        .hero-grid,
+        .dashboard-lower,
+        .care-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 700px) {
+        .main {
+          padding: 18px;
+        }
+
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .actions,
+        .segmented {
+          width: 100%;
+        }
+
+        .hero,
+        .hero-content,
+        .health-panel {
+          min-height: 315px;
+        }
+
+        .hero-content {
+          padding: 22px;
+        }
+
+        .metrics,
+        .warning-list {
+          grid-template-columns: 1fr;
+        }
+
+        .table-head {
+          display: none;
+        }
+
+        .goat-row,
+        .maintenance-row,
+        .vaccine-row,
+        .log-row,
+        .history-row,
+        .form-row {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar" aria-label="Dashboard sections">
+        <div class="brand">
+          <div class="brand-mark">GD</div>
+          <div>
+            <strong>Goat Health</strong>
+            <span>Nigerian Dwarf doelings</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Primary">
+          <button aria-current="page" title="Overview">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 12h7V4H4v8Zm0 8h7v-6H4v6Zm9 0h7v-8h-7v8Zm0-18v8h7V2h-7Z" fill="currentColor" />
+            </svg>
+            Overview
+          </button>
+          <button title="Health log">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 21s-8-4.8-8-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.2-8 11-8 11h-2Zm-1-6h2v-3h3v-2h-3V7h-2v3H8v2h3v3Z" fill="currentColor" />
+            </svg>
+            Health
+          </button>
+          <button title="Maintenance">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 2h2v3h6V2h2v3h3v17H4V5h3V2Zm13 9H6v9h14v-9ZM6 9h14V7H6v2Z" fill="currentColor" />
+            </svg>
+            Schedule
+          </button>
+          <button title="Pasture">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 5.5 9 3l6 2.5L20 3v15.5L15 21 9 18.5 4 21V5.5Zm2 1.2v10.6l2-1V5.7l-2 1Zm5-.2v10.8l4 1.7V8.2l-4-1.7Zm9-1.3-2 1v10.6l2-1V5.2Z" fill="currentColor" />
+            </svg>
+            Pasture
+          </button>
+        </nav>
+
+        <section class="sidebar-card" aria-label="Housing and supplies">
+          <h2>Housing</h2>
+          <div class="supply-list">
+            <div class="supply-item"><strong>Pasture</strong><span>Fenced</span></div>
+            <div class="supply-item"><strong>Shelter</strong><span>Available</span></div>
+            <div class="supply-item"><strong>Water</strong><span>Fresh</span></div>
+            <div class="supply-item"><strong>Hay</strong><span>Free-choice</span></div>
+            <div class="supply-item"><strong>Minerals</strong><span>Loose</span></div>
+            <div class="supply-item"><strong>Baking soda</strong><span>Free-choice</span></div>
+          </div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1>Goat Health Dashboard</h1>
+            <div class="date">Sunday, June 7, 2026 · 12 weeks old · DOB March 15, 2026</div>
+          </div>
+          <div class="actions">
+            <div class="segmented" role="group" aria-label="Care schedule">
+              <button class="active" data-plan="daily">Daily</button>
+              <button data-plan="weekly">Weekly</button>
+              <button data-plan="monthly">Monthly</button>
+            </div>
+            <button class="icon-button" title="Refresh dashboard" aria-label="Refresh dashboard" id="refreshButton">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M20 12a8 8 0 0 1-13.7 5.6l1.4-1.4A6 6 0 1 0 6 12H3l4-4 4 4H8a4 4 0 1 1 4 4v2a6 6 0 1 0 6-6h2Z" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="hero-grid">
+          <article class="hero" aria-label="Dashboard summary">
+            <img src="assets/nigerian-dwarf-doelings.jpg" alt="Two young Nigerian Dwarf doelings standing in a pasture" />
+            <div class="hero-content">
+              <p class="eyebrow">Current status</p>
+              <h2>MacIntosh and Ms. McGonegal are active, weaned, and eating well.</h2>
+              <p>
+                Both doelings have normal pellet-shaped poop, completed CDT boosters in May
+                2026, and had no vaccine reactions observed.
+              </p>
+            </div>
+          </article>
+
+          <section class="health-panel" aria-label="Goat profiles">
+            <div class="panel-heading">
+              <h2>Doeling Profiles</h2>
+              <span class="status-pill">Both stable</span>
+            </div>
+            <div class="goat-profiles">
+              <article class="goat-card">
+                <div class="goat-name">
+                  <span class="avatar white">W</span>
+                  <div>
+                    <strong>MacIntosh</strong>
+                    <span>Nigerian Dwarf doeling</span>
+                  </div>
+                </div>
+                <div class="profile-list">
+                  <div><strong>Milk</strong><span>Fully weaned</span></div>
+                  <div><strong>Diet</strong><span>Hay, forage, grain, minerals</span></div>
+                  <div><strong>Poop</strong><span>Normal pellets</span></div>
+                  <div><strong>CDT</strong><span>Booster complete</span></div>
+                </div>
+              </article>
+              <article class="goat-card">
+                <div class="goat-name">
+                  <span class="avatar black">B</span>
+                  <div>
+                    <strong>Ms. McGonegal</strong>
+                    <span>Nigerian Dwarf doeling</span>
+                  </div>
+                </div>
+                <div class="profile-list">
+                  <div><strong>Milk</strong><span>Fully weaned</span></div>
+                  <div><strong>Diet</strong><span>Hay, forage, grain, minerals</span></div>
+                  <div><strong>Poop</strong><span>Normal pellets</span></div>
+                  <div><strong>CDT</strong><span>Booster complete</span></div>
+                </div>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <section class="metrics" aria-label="Key metrics">
+          <article class="card">
+            <div class="card-top">
+              Goats
+              <span class="badge green">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M8 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm8.5 1a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7ZM2 20c.4-3.7 2.8-6 6-6s5.6 2.3 6 6H2Zm11.4 0c-.2-1.5-.7-2.8-1.5-3.9 1-.8 2.2-1.1 3.6-1.1 2.9 0 5 2 5.5 5h-7.6Z" fill="currentColor" />
+                </svg>
+              </span>
+            </div>
+            <div class="metric">2</div>
+            <div class="trend">MacIntosh and Ms. McGonegal</div>
+          </article>
+          <article class="card">
+            <div class="card-top">
+              Age
+              <span class="badge blue">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M7 2h2v3h6V2h2v3h3v17H4V5h3V2Zm13 9H6v9h14v-9Z" fill="currentColor" />
+                </svg>
+              </span>
+            </div>
+            <div class="metric">12w</div>
+            <div class="trend">Born March 15, 2026</div>
+          </article>
+          <article class="card">
+            <div class="card-top">
+              Vaccine status
+              <span class="badge green">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="m10 15.2 7.1-7.1 1.4 1.4L10 18 5.5 13.5 6.9 12l3.1 3.2Z" fill="currentColor" />
+                </svg>
+              </span>
+            </div>
+            <div class="metric">CDT</div>
+            <div class="trend">Booster completed May 2026</div>
+          </article>
+          <article class="card">
+            <div class="card-top">
+              Next focus
+              <span class="badge amber">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 2 2 20h20L12 2Zm1 15h-2v-2h2v2Zm0-4h-2V8h2v5Z" fill="currentColor" />
+                </svg>
+              </span>
+            </div>
+            <div class="metric">June</div>
+            <div class="trend">First full hoof trim</div>
+          </article>
+        </section>
+
+        <section class="dashboard-lower">
+          <section class="table-panel" aria-label="Health tracking">
+            <div class="table-head">
+              <h2>Health Tracking</h2>
+              <span>MacIntosh</span>
+              <span>Ms. McGonegal</span>
+              <span>Watch</span>
+            </div>
+            <div class="goat-row">
+              <strong>Appetite</strong>
+              <span>Normal</span>
+              <span>Normal</span>
+              <span class="chip good">Clear</span>
+            </div>
+            <div class="goat-row">
+              <strong>Water intake</strong>
+              <span>Available</span>
+              <span>Available</span>
+              <span class="chip good">Clear</span>
+            </div>
+            <div class="goat-row">
+              <strong>Activity level</strong>
+              <span>Very active</span>
+              <span>Very active</span>
+              <span class="chip good">Clear</span>
+            </div>
+            <div class="goat-row">
+              <strong>Poop consistency</strong>
+              <span>Pellet-shaped</span>
+              <span>Pellet-shaped</span>
+              <span class="chip good">Clear</span>
+            </div>
+            <div class="goat-row">
+              <strong>Parasite signs</strong>
+              <span>Monitor</span>
+              <span>Monitor</span>
+              <span class="chip watch">FAMACHA</span>
+            </div>
+            <div class="goat-row">
+              <strong>Respiratory signs</strong>
+              <span>None noted</span>
+              <span>None noted</span>
+              <span class="chip good">Clear</span>
+            </div>
+          </section>
+
+          <aside class="control-panel" aria-label="Care controls">
+            <section class="control-card">
+              <h2 id="planTitle">Daily Checklist</h2>
+              <div class="checklist" id="careChecklist"></div>
+              <div class="log-actions">
+                <button class="text-button secondary" type="button" id="resetChecklistButton">Reset checklist</button>
+              </div>
+            </section>
+            <section class="control-card">
+              <h2>Water Level</h2>
+              <div class="range-row">
+                <input id="waterLevel" type="range" min="10" max="100" value="92" aria-label="Water level" />
+                <span class="water-value" id="waterValue">92%</span>
+              </div>
+            </section>
+          </aside>
+        </section>
+
+        <section class="care-grid">
+          <section class="care-panel" aria-label="Maintenance schedule">
+            <div class="table-head">
+              <h2>Maintenance Schedule</h2>
+              <span>Cadence</span>
+              <span>Status</span>
+            </div>
+            <div class="maintenance-row">
+              <strong>First full hoof trim on both goats</strong>
+              <span>June 2026</span>
+              <span class="chip watch">Due</span>
+            </div>
+            <div class="maintenance-row">
+              <strong>Handle feet to make trims easier</strong>
+              <span>Weekly</span>
+              <span class="chip watch">Continue</span>
+            </div>
+            <div class="maintenance-row">
+              <strong>Trim hooves</strong>
+              <span>Every 6-8 weeks</span>
+              <span class="chip watch">Schedule</span>
+            </div>
+            <div class="maintenance-row">
+              <strong>FAMACHA eye color check</strong>
+              <span>Monthly</span>
+              <span class="chip watch">Monitor</span>
+            </div>
+            <div class="maintenance-row">
+              <strong>Deworming review by FAMACHA and fecal testing</strong>
+              <span>Spring / Fall</span>
+              <span class="chip watch">Review</span>
+            </div>
+            <div class="maintenance-row">
+              <strong>CDT booster</strong>
+              <span>Annually</span>
+              <span class="chip good">Logged</span>
+            </div>
+          </section>
+
+          <section class="table-panel" aria-label="Vaccination history">
+            <div class="table-head vaccine-row">
+              <h2>Vaccination Log</h2>
+              <span>Event</span>
+              <span>Reaction</span>
+            </div>
+            <div class="vaccine-row">
+              <strong>Breeder</strong>
+              <span>Initial CDT</span>
+              <span>Not recorded</span>
+            </div>
+            <div class="vaccine-row">
+              <strong>May 2026</strong>
+              <span>CDT booster completed</span>
+              <span>No reactions observed</span>
+            </div>
+            <p class="note">
+              Grain is supplemental, treats are limited, and forage plus hay remain the
+              primary diet. Next annual CDT booster: around May 2027.
+            </p>
+          </section>
+        </section>
+
+        <section class="care-grid">
+          <section class="care-panel" aria-label="Add health or maintenance log">
+            <div class="table-head">
+              <h2>Add Health / Maintenance Log</h2>
+              <span>Saved in this browser</span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="form-pad">
+              <form class="log-form" id="logForm">
+                <div class="form-row">
+                  <input id="logDate" type="date" aria-label="Log date" />
+                  <select id="logGoat" aria-label="Goat">
+                    <option>Both</option>
+                    <option>MacIntosh</option>
+                    <option>Ms. McGonegal</option>
+                  </select>
+                  <select id="logType" aria-label="Log type">
+                    <option>Health</option>
+                    <option>Feed</option>
+                    <option>Hoof Trim</option>
+                    <option>Vaccine</option>
+                    <option>Behavior</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <textarea id="logNote" placeholder="Example: Both goats active, pellet poop, eating hay and forage." aria-label="Log note"></textarea>
+                <div class="log-actions">
+                  <button class="text-button" type="submit">Add log</button>
+                  <button class="text-button secondary" type="button" id="clearLogsButton">Clear logs</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <section class="table-panel" aria-label="Saved logs">
+            <div class="table-head log-row">
+              <h2>Saved Logs</h2>
+              <span>Goat</span>
+              <span>Type</span>
+              <span>Note</span>
+            </div>
+            <div id="logRows"></div>
+          </section>
+        </section>
+
+        <section class="care-grid">
+          <section class="care-panel" aria-label="iCloud backup">
+            <div class="table-head">
+              <h2>iCloud Backup</h2>
+              <span>Export / import</span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="form-pad">
+              <p class="backup-copy">
+                Export a backup file, save it to iCloud Drive, then import that file on
+                another device to bring over logs, checklist checks, and water level.
+              </p>
+              <div class="log-actions">
+                <button class="text-button" type="button" id="exportBackupButton">Export backup</button>
+                <button class="text-button secondary" type="button" id="importBackupButton">Import backup</button>
+              </div>
+              <input class="visually-hidden" id="backupFileInput" type="file" accept="application/json,.json" />
+              <div class="backup-status" id="backupStatus" aria-live="polite"></div>
+            </div>
+          </section>
+
+          <section class="care-panel" aria-label="iPhone install notes">
+            <div class="table-head">
+              <h2>iPhone Install</h2>
+              <span>Safari</span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="form-pad">
+              <p class="backup-copy">
+                Open the hosted dashboard in Safari on iPhone, tap Share, then Add to
+                Home Screen. The app icon and Home Screen name are now configured.
+              </p>
+              <p class="note">
+                iCloud Drive stores backup files. It does not automatically sync browser
+                app storage, so use Export and Import when you want to move updates
+                between Mac and iPhone.
+              </p>
+            </div>
+          </section>
+        </section>
+
+        <section class="table-panel" aria-label="Known history">
+          <div class="table-head history-row">
+            <h2>Known History</h2>
+            <span>Event</span>
+          </div>
+          <div class="history-row">
+            <strong>March 15, 2026</strong>
+            <span>Both Nigerian Dwarf doelings born.</span>
+          </div>
+          <div class="history-row">
+            <strong>Breeder</strong>
+            <span>Initial CDT vaccine given.</span>
+          </div>
+          <div class="history-row">
+            <strong>May 2026</strong>
+            <span>CDT booster completed by Dan. No reactions observed: no lumps, active, doing fine.</span>
+          </div>
+          <div class="history-row">
+            <strong>Late May / Early June 2026</strong>
+            <span>Both goats fully transitioned off milk. Eating forage, hay, some grain, minerals, and limited treats.</span>
+          </div>
+          <div class="history-row">
+            <strong>Current</strong>
+            <span>Both goats have solid pellet poop and normal activity.</span>
+          </div>
+        </section>
+
+        <section class="warning-panel" aria-label="Warning signs">
+          <div class="warning-title">
+            <h2>Warning Signs Requiring Immediate Attention</h2>
+            <span class="status-pill">Normal temp: 101.5F-103.5F</span>
+          </div>
+          <div class="warning-list">
+            <span>Refuses food</span>
+            <span>Refuses water</span>
+            <span>Diarrhea over 24 hours</span>
+            <span>Temperature above 103.5F</span>
+            <span>Temperature below 101F</span>
+            <span>Labored breathing</span>
+            <span>Bloat</span>
+            <span>Lethargy</span>
+            <span>Pale eyelids</span>
+          </div>
+          <p class="note">
+            This dashboard is a care tracker, not a diagnosis tool. For urgent symptoms,
+            contact a veterinarian or experienced goat health professional.
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const plans = {
+        daily: [
+          "Check water",
+          "Check hay supply",
+          "Observe appetite",
+          "Observe poop",
+          "Observe movement and activity",
+          "Quick body check",
+        ],
+        weekly: [
+          "Refill minerals",
+          "Refill baking soda",
+          "Check fencing",
+          "Check shelter condition",
+          "Look for signs of parasites",
+          "Body condition check",
+          "Handle feet for training",
+        ],
+        monthly: [
+          "Weight estimate",
+          "FAMACHA eye color check",
+          "Thorough hoof inspection",
+          "Review feed consumption",
+        ],
+      };
+
+      const planTitles = {
+        daily: "Daily Checklist",
+        weekly: "Weekly Checklist",
+        monthly: "Monthly Checklist",
+      };
+
+      const planButtons = document.querySelectorAll(".segmented button");
+      const careChecklist = document.getElementById("careChecklist");
+      const planTitle = document.getElementById("planTitle");
+      const waterLevel = document.getElementById("waterLevel");
+      const waterValue = document.getElementById("waterValue");
+      const refreshButton = document.getElementById("refreshButton");
+      const logForm = document.getElementById("logForm");
+      const logDate = document.getElementById("logDate");
+      const logGoat = document.getElementById("logGoat");
+      const logType = document.getElementById("logType");
+      const logNote = document.getElementById("logNote");
+      const logRows = document.getElementById("logRows");
+      const clearLogsButton = document.getElementById("clearLogsButton");
+      const resetChecklistButton = document.getElementById("resetChecklistButton");
+      const exportBackupButton = document.getElementById("exportBackupButton");
+      const importBackupButton = document.getElementById("importBackupButton");
+      const backupFileInput = document.getElementById("backupFileInput");
+      const backupStatus = document.getElementById("backupStatus");
+      let activePlan = "daily";
+
+      function renderPlan(plan) {
+        activePlan = plan;
+        planTitle.textContent = planTitles[plan];
+        careChecklist.innerHTML = plans[plan]
+          .map((item, index) => {
+            const key = `goat-check-${plan}-${index}`;
+            const checked = localStorage.getItem(key) === "1" ? "checked" : "";
+            return `<label class="check"><input type="checkbox" data-check-key="${key}" ${checked} /> ${item}</label>`;
+          })
+          .join("");
+      }
+
+      function resetActivePlan() {
+        plans[activePlan].forEach((_, index) => {
+          localStorage.removeItem(`goat-check-${activePlan}-${index}`);
+        });
+        renderPlan(activePlan);
+      }
+
+      function getLogs() {
+        return JSON.parse(localStorage.getItem("goatLogs") || "[]");
+      }
+
+      function saveLogs(logs) {
+        localStorage.setItem("goatLogs", JSON.stringify(logs));
+      }
+
+      function allChecklistKeys() {
+        return Object.entries(plans).flatMap(([plan, items]) =>
+          items.map((_, index) => `goat-check-${plan}-${index}`)
+        );
+      }
+
+      function collectBackupData() {
+        const checks = {};
+        allChecklistKeys().forEach((key) => {
+          checks[key] = localStorage.getItem(key) === "1";
+        });
+
+        return {
+          app: "goat-health-dashboard",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          goats: ["MacIntosh", "Ms. McGonegal"],
+          logs: getLogs(),
+          checks,
+          waterLevel: waterLevel.value,
+        };
+      }
+
+      function restoreBackupData(data) {
+        if (!data || data.app !== "goat-health-dashboard") {
+          throw new Error("This does not look like a Goat Health Dashboard backup.");
+        }
+
+        saveLogs(Array.isArray(data.logs) ? data.logs : []);
+
+        allChecklistKeys().forEach((key) => localStorage.removeItem(key));
+        Object.entries(data.checks || {}).forEach(([key, value]) => {
+          if (allChecklistKeys().includes(key) && value) {
+            localStorage.setItem(key, "1");
+          }
+        });
+
+        if (data.waterLevel) {
+          localStorage.setItem("goat-water-level", data.waterLevel);
+          waterLevel.value = data.waterLevel;
+          waterValue.textContent = `${data.waterLevel}%`;
+        }
+
+        renderPlan(activePlan);
+        renderLogs();
+      }
+
+      function setBackupStatus(message) {
+        backupStatus.textContent = message;
+      }
+
+      async function exportBackup() {
+        const data = collectBackupData();
+        const json = JSON.stringify(data, null, 2);
+        const date = new Date().toISOString().slice(0, 10);
+        const fileName = `goat-health-dashboard-backup-${date}.json`;
+        const file = new File([json], fileName, { type: "application/json" });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: "Goat Health Dashboard Backup",
+            text: "Save this backup to iCloud Drive.",
+            files: [file],
+          });
+          setBackupStatus("Backup ready to save in iCloud Drive.");
+          return;
+        }
+
+        const url = URL.createObjectURL(file);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+        setBackupStatus("Backup downloaded. Save it to iCloud Drive if prompted.");
+      }
+
+      function importBackup(file) {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => {
+          try {
+            restoreBackupData(JSON.parse(reader.result));
+            setBackupStatus("Backup imported.");
+          } catch (error) {
+            setBackupStatus(error.message);
+          }
+        });
+        reader.readAsText(file);
+      }
+
+      function renderLogs() {
+        const logs = getLogs();
+        if (logs.length === 0) {
+          logRows.innerHTML = '<div class="empty-state">No saved logs yet.</div>';
+          return;
+        }
+
+        logRows.innerHTML = logs
+          .map(
+            (log) => `
+              <div class="log-row">
+                <strong>${log.date}</strong>
+                <span>${log.goat}</span>
+                <span>${log.type}</span>
+                <span>${log.note}</span>
+              </div>
+            `
+          )
+          .join("");
+      }
+
+      planButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          planButtons.forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          renderPlan(button.dataset.plan);
+        });
+      });
+
+      careChecklist.addEventListener("change", (event) => {
+        const key = event.target.dataset.checkKey;
+        if (!key) return;
+        localStorage.setItem(key, event.target.checked ? "1" : "0");
+      });
+
+      resetChecklistButton.addEventListener("click", resetActivePlan);
+
+      waterLevel.addEventListener("input", () => {
+        waterValue.textContent = `${waterLevel.value}%`;
+        localStorage.setItem("goat-water-level", waterLevel.value);
+      });
+
+      logForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const note = logNote.value.trim();
+        if (!note) {
+          logNote.focus();
+          return;
+        }
+
+        const logs = getLogs();
+        logs.unshift({
+          date: logDate.value,
+          goat: logGoat.value,
+          type: logType.value,
+          note,
+        });
+        saveLogs(logs);
+        logNote.value = "";
+        renderLogs();
+      });
+
+      clearLogsButton.addEventListener("click", () => {
+        localStorage.removeItem("goatLogs");
+        renderLogs();
+      });
+
+      exportBackupButton.addEventListener("click", () => {
+        exportBackup().catch(() => setBackupStatus("Backup export was cancelled or blocked."));
+      });
+
+      importBackupButton.addEventListener("click", () => {
+        backupFileInput.click();
+      });
+
+      backupFileInput.addEventListener("change", () => {
+        const file = backupFileInput.files && backupFileInput.files[0];
+        if (file) importBackup(file);
+        backupFileInput.value = "";
+      });
+
+      refreshButton.addEventListener("click", () => {
+        refreshButton.animate(
+          [{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }],
+          { duration: 550, easing: "ease-out" }
+        );
+      });
+
+      logDate.valueAsDate = new Date();
+      waterLevel.value = localStorage.getItem("goat-water-level") || waterLevel.value;
+      waterValue.textContent = `${waterLevel.value}%`;
+      renderPlan("daily");
+      renderLogs();
+      if ("serviceWorker" in navigator && location.protocol !== "file:") {
+        navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      }
+    </script>
+  </body>
+</html>
