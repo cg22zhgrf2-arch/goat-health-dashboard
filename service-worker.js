@@ -1,4 +1,4 @@
-const CACHE_NAME = "goat-health-dashboard-v1";
+const CACHE_NAME = "goat-health-dashboard-v2";
 const ASSETS = [
   "./",
   "./index.html",

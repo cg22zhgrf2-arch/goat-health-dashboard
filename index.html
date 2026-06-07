@@ -645,6 +645,21 @@
         font-size: 0.84rem;
       }
 
+      .sync-fields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10px;
+      }
+
+      .sync-fields input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 11px;
+        color: var(--ink);
+        background: #fff;
+      }
+
       .visually-hidden {
         position: absolute;
         width: 1px;
@@ -755,7 +770,8 @@
         .vaccine-row,
         .log-row,
         .history-row,
-        .form-row {
+        .form-row,
+        .sync-fields {
           grid-template-columns: 1fr;
           gap: 8px;
         }
@@ -1110,6 +1126,33 @@
         </section>
 
         <section class="care-grid">
+          <section class="care-panel" aria-label="Cloud sync">
+            <div class="table-head">
+              <h2>Cloud Sync</h2>
+              <span>Mac + iPhone</span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="form-pad">
+              <p class="backup-copy">
+                Sign in with the same email on each device. Logs, checklist checks, and
+                water level will sync through Firebase.
+              </p>
+              <div class="log-form">
+                <div class="sync-fields">
+                  <input id="syncEmail" type="email" autocomplete="email" placeholder="Email" aria-label="Sync email" />
+                  <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Password" aria-label="Sync password" />
+                </div>
+                <div class="log-actions">
+                  <button class="text-button" type="button" id="signInButton">Sign in</button>
+                  <button class="text-button secondary" type="button" id="createAccountButton">Create account</button>
+                  <button class="text-button secondary" type="button" id="signOutButton" hidden>Sign out</button>
+                </div>
+                <div class="backup-status" id="cloudStatus" aria-live="polite">Not signed in.</div>
+              </div>
+            </div>
+          </section>
+
           <section class="care-panel" aria-label="iCloud backup">
             <div class="table-head">
               <h2>iCloud Backup</h2>
@@ -1121,6 +1164,7 @@
               <p class="backup-copy">
                 Export a backup file, save it to iCloud Drive, then import that file on
                 another device to bring over logs, checklist checks, and water level.
+                Use this as a manual backup if cloud sync is unavailable.
               </p>
               <div class="log-actions">
                 <button class="text-button" type="button" id="exportBackupButton">Export backup</button>
@@ -1144,9 +1188,8 @@
                 Home Screen. The app icon and Home Screen name are now configured.
               </p>
               <p class="note">
-                iCloud Drive stores backup files. It does not automatically sync browser
-                app storage, so use Export and Import when you want to move updates
-                between Mac and iPhone.
+                iCloud Drive stores backup files. Cloud Sync handles automatic syncing
+                once Firebase sign-in and Firestore are enabled.
               </p>
             </div>
           </section>
@@ -1203,7 +1246,39 @@
       </main>
     </div>
 
-    <script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+      import {
+        createUserWithEmailAndPassword,
+        getAuth,
+        onAuthStateChanged,
+        signInWithEmailAndPassword,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+      import {
+        doc,
+        enableIndexedDbPersistence,
+        getDoc,
+        getFirestore,
+        onSnapshot,
+        serverTimestamp,
+        setDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDlpmoH74bkXy02Yz_a761azMBRjEwY0_c",
+        authDomain: "goat-health-dashboard.firebaseapp.com",
+        projectId: "goat-health-dashboard",
+        storageBucket: "goat-health-dashboard.firebasestorage.app",
+        messagingSenderId: "630405030393",
+        appId: "1:630405030393:web:1469a976cbcec3dede1d28",
+      };
+
+      const firebaseApp = initializeApp(firebaseConfig);
+      const auth = getAuth(firebaseApp);
+      const db = getFirestore(firebaseApp);
+      enableIndexedDbPersistence(db).catch(() => {});
+
       const plans = {
         daily: [
           "Check water",
@@ -1254,7 +1329,34 @@
       const importBackupButton = document.getElementById("importBackupButton");
       const backupFileInput = document.getElementById("backupFileInput");
       const backupStatus = document.getElementById("backupStatus");
+      const syncEmail = document.getElementById("syncEmail");
+      const syncPassword = document.getElementById("syncPassword");
+      const signInButton = document.getElementById("signInButton");
+      const createAccountButton = document.getElementById("createAccountButton");
+      const signOutButton = document.getElementById("signOutButton");
+      const cloudStatus = document.getElementById("cloudStatus");
       let activePlan = "daily";
+      let currentUser = null;
+      let cloudUnsubscribe = null;
+      let cloudSaveTimer = null;
+      let applyingCloudState = false;
+
+      function escapeHTML(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function setCloudStatus(message) {
+        cloudStatus.textContent = message;
+      }
+
+      function cloudDocRef() {
+        return doc(db, "users", currentUser.uid, "dashboard", "state");
+      }
 
       function renderPlan(plan) {
         activePlan = plan;
@@ -1273,6 +1375,7 @@
           localStorage.removeItem(`goat-check-${activePlan}-${index}`);
         });
         renderPlan(activePlan);
+        scheduleCloudSave();
       }
 
       function getLogs() {
@@ -1330,6 +1433,29 @@
         renderLogs();
       }
 
+      async function saveCloudNow(message = "Synced.") {
+        if (!currentUser || applyingCloudState) return;
+        setCloudStatus("Saving...");
+        await setDoc(
+          cloudDocRef(),
+          {
+            ...collectBackupData(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+        setCloudStatus(message);
+      }
+
+      function scheduleCloudSave() {
+        if (!currentUser || applyingCloudState) return;
+        clearTimeout(cloudSaveTimer);
+        setCloudStatus("Saving...");
+        cloudSaveTimer = setTimeout(() => {
+          saveCloudNow().catch((error) => setCloudStatus(`Sync error: ${error.message}`));
+        }, 500);
+      }
+
       function setBackupStatus(message) {
         backupStatus.textContent = message;
       }
@@ -1365,6 +1491,7 @@
         reader.addEventListener("load", () => {
           try {
             restoreBackupData(JSON.parse(reader.result));
+            scheduleCloudSave();
             setBackupStatus("Backup imported.");
           } catch (error) {
             setBackupStatus(error.message);
@@ -1384,10 +1511,10 @@
           .map(
             (log) => `
               <div class="log-row">
-                <strong>${log.date}</strong>
-                <span>${log.goat}</span>
-                <span>${log.type}</span>
-                <span>${log.note}</span>
+                <strong>${escapeHTML(log.date)}</strong>
+                <span>${escapeHTML(log.goat)}</span>
+                <span>${escapeHTML(log.type)}</span>
+                <span>${escapeHTML(log.note)}</span>
               </div>
             `
           )
@@ -1406,6 +1533,7 @@
         const key = event.target.dataset.checkKey;
         if (!key) return;
         localStorage.setItem(key, event.target.checked ? "1" : "0");
+        scheduleCloudSave();
       });
 
       resetChecklistButton.addEventListener("click", resetActivePlan);
@@ -1413,6 +1541,7 @@
       waterLevel.addEventListener("input", () => {
         waterValue.textContent = `${waterLevel.value}%`;
         localStorage.setItem("goat-water-level", waterLevel.value);
+        scheduleCloudSave();
       });
 
       logForm.addEventListener("submit", (event) => {
@@ -1433,11 +1562,13 @@
         saveLogs(logs);
         logNote.value = "";
         renderLogs();
+        scheduleCloudSave();
       });
 
       clearLogsButton.addEventListener("click", () => {
         localStorage.removeItem("goatLogs");
         renderLogs();
+        scheduleCloudSave();
       });
 
       exportBackupButton.addEventListener("click", () => {
@@ -1454,6 +1585,20 @@
         backupFileInput.value = "";
       });
 
+      signInButton.addEventListener("click", () => {
+        signInWithEmailAndPassword(auth, syncEmail.value.trim(), syncPassword.value)
+          .catch((error) => setCloudStatus(`Sign-in error: ${error.message}`));
+      });
+
+      createAccountButton.addEventListener("click", () => {
+        createUserWithEmailAndPassword(auth, syncEmail.value.trim(), syncPassword.value)
+          .catch((error) => setCloudStatus(`Account error: ${error.message}`));
+      });
+
+      signOutButton.addEventListener("click", () => {
+        signOut(auth).catch((error) => setCloudStatus(`Sign-out error: ${error.message}`));
+      });
+
       refreshButton.addEventListener("click", () => {
         refreshButton.animate(
           [{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }],
@@ -1466,6 +1611,56 @@
       waterValue.textContent = `${waterLevel.value}%`;
       renderPlan("daily");
       renderLogs();
+      onAuthStateChanged(auth, async (user) => {
+        if (cloudUnsubscribe) {
+          cloudUnsubscribe();
+          cloudUnsubscribe = null;
+        }
+
+        currentUser = user;
+        signOutButton.hidden = !user;
+        signInButton.hidden = Boolean(user);
+        createAccountButton.hidden = Boolean(user);
+        syncPassword.hidden = Boolean(user);
+        syncEmail.disabled = Boolean(user);
+
+        if (!user) {
+          setCloudStatus("Not signed in.");
+          return;
+        }
+
+        syncEmail.value = user.email || syncEmail.value;
+        setCloudStatus(`Signed in as ${user.email}. Loading cloud data...`);
+
+        try {
+          const ref = cloudDocRef();
+          const firstSnapshot = await getDoc(ref);
+          if (firstSnapshot.exists()) {
+            applyingCloudState = true;
+            restoreBackupData(firstSnapshot.data());
+            applyingCloudState = false;
+            setCloudStatus("Cloud data loaded.");
+          } else {
+            await saveCloudNow("Created cloud sync from this device.");
+          }
+
+          cloudUnsubscribe = onSnapshot(
+            ref,
+            (snapshot) => {
+              if (!snapshot.exists()) return;
+              applyingCloudState = true;
+              restoreBackupData(snapshot.data());
+              applyingCloudState = false;
+              setCloudStatus(`Synced as ${user.email}.`);
+            },
+            (error) => setCloudStatus(`Sync error: ${error.message}`)
+          );
+        } catch (error) {
+          applyingCloudState = false;
+          setCloudStatus(`Sync setup error: ${error.message}`);
+        }
+      });
+
       if ("serviceWorker" in navigator && location.protocol !== "file:") {
         navigator.serviceWorker.register("service-worker.js").catch(() => {});
       }
